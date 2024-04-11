@@ -211,11 +211,13 @@ def run(url_amazonia, url_cerrado):
 
 app = Flask(__name__)
 
-@app.route('/')
+@app.route('/enviar_email', methods=['POST'])
 def enviar_email_bioma():
     url_amazonia = "http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_amazonia.html"
     url_cerrado = "http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_cerrado.html"
-    return run(url_amazonia, url_cerrado)
+    run(url_amazonia, url_cerrado)
+    return "E-mail enviado com sucesso!"
+
 
 if __name__ == '__main__':
     app.run(debug=True)
