@@ -183,7 +183,6 @@ def run(url_amazonia, url_cerrado):
     focos_24h_amazonia = raspar_dados_bioma(soup_amazonia, 1, dia_do_mes - 2)
     acumulado_mes_atual_amazonia = raspar_dados_bioma(soup_amazonia, 1, 30)
     total_mesmo_mes_ano_passado_amazonia = raspar_dados_bioma(soup_amazonia, 0, 30)
-    mes_atual = data_atual.month
 
     # Dados do Cerrado
     focos_24h_cerrado = raspar_dados_bioma(soup_cerrado, 1, dia_do_mes - 2)
@@ -193,7 +192,7 @@ def run(url_amazonia, url_cerrado):
     # Encontrar o nome do mês correspondente ao número do mês atual
     nome_mes_atual = None
     for mes, numero in mapping_meses.items():
-        if numero == mes_atual - 1:  # Subtraímos 1 porque os meses em Python vão de 1 a 12
+        if numero == data_atual.month - 1:  # Subtraímos 1 porque os meses em Python vão de 1 a 12
             nome_mes_atual = mes
 
     print('Executando função de média e recorde mensal para a Amazônia...')
@@ -208,6 +207,7 @@ def run(url_amazonia, url_cerrado):
                  focos_24h_cerrado, acumulado_mes_atual_cerrado, total_mesmo_mes_ano_passado_cerrado,
                  media_cerrado, recorde_cerrado)
     return "E-mail enviado com sucesso!"
+
 
 app = Flask(__name__)
 
