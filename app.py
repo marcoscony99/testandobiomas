@@ -43,12 +43,14 @@ def raspar_dados_bioma(soup, row, col):
     return valores_coluna[0] if valores_coluna else None
 
 # Função para encontrar a média e o recorde mensal
-def encontrar_media_e_recorde_mensal(soup, mes_solicitado):
+def encontrar_media_e_recorde_mensal(url, mes_solicitado):
     print("Encontrando média e recorde mensal...")
     quantidade_linhas = 27
     
     resultado_media = ""
     resultado_recorde = ""
+    
+    soup = obter_html(url)
     
     if mes_solicitado.lower() in mapping_meses:
         mes_index = mapping_meses[mes_solicitado.lower()]
@@ -89,7 +91,7 @@ def enviar_email(focos_24h_amazonia, acumulado_mes_atual_amazonia, total_mesmo_m
     email = os.environ.get("EMAIL")
     password = os.environ.get("PASSWORD")
     remetente = "marcoscony@gmail.com"
-    destinatarios = ["marcoscony@gmail.com", 'marcos.acony@g.globo', 'alvarojusten@gmail.com']
+    destinatarios = ["marcoscony@gmail.com", 'marcos.acony@g.globo']
     titulo = "Teste de email"
 
     texto = f"""
@@ -111,14 +113,16 @@ def enviar_email(focos_24h_amazonia, acumulado_mes_atual_amazonia, total_mesmo_m
     html = f"""
     <html>
       <body>
+        <h2 style="color: #8B0000;"><b>AMAZÔNIA - FOCOS DE INCÊNDIO</b></h2>
         <ul>
-          <h2 style="color: #8B0000;"><b>AMAZÔNIA - FOCOS DE INCÊNDIO</b></h2>
           <li><b style="color: #555555;">24h</b> - {focos_24h_amazonia} focos<br></li>
           <li><b style="color: #555555;">Acumulado do mês atual</b> - {acumulado_mes_atual_amazonia} focos (vs {total_mesmo_mes_ano_passado_amazonia} focos totais no mesmo mês do ano passado)<br></li>
           <li><b style="color: orange;">{media_amazonia}</b><br></li>
           <li><b style="color: red;">{recorde_amazonia}</b><br></li>
+        </ul>
 
-          <h2 style="color: #8B0000;"><b>CERRADO - FOCOS DE INCÊNDIO</b></h2>
+        <h2 style="color: #8B0000;"><b>CERRADO - FOCOS DE INCÊNDIO</b></h2>
+        <ul>
           <li><b style="color: #555555;">24h</b> - {focos_24h_cerrado} focos<br></li>
           <li><b style="color: #555555;">Acumulado do mês atual</b> - {acumulado_mes_atual_cerrado} focos (vs {total_mesmo_mes_ano_passado_cerrado} focos totais no mesmo mês do ano passado)<br></li>
           <li><b style="color: orange;">{media_cerrado}</b><br></li>
@@ -148,35 +152,30 @@ def enviar_email(focos_24h_amazonia, acumulado_mes_atual_amazonia, total_mesmo_m
     print("E-mail enviado com sucesso.")
 
 # Função para obter o HTML e raspar dados dos biomas especificados
-def obter_e_raspar_biomas(url_amazonia, url_cerrado):
+def obter_e_raspar_biomas(url_amazonia_dados, url_cerrado_dados, url_amazonia_media_recorde, url_cerrado_media_recorde):
     # Obter dados da Amazônia
     print("Obtendo HTML da URL para Amazônia")
-    soup_amazonia = obter_html(url_amazonia)
     data_atual = datetime.now()
     dia_do_mes = data_atual.day
-    focos_24h_amazonia = raspar_dados_bioma(soup_amazonia, 1, dia_do_mes - 2)
-    acumulado_mes_atual_amazonia = raspar_dados_bioma(soup_amazonia, 1, 30)
-    total_mesmo_mes_ano_passado_amazonia = raspar_dados_bioma(soup_amazonia, 0, 30)
-    mes_atual = data_atual.month
+    focos_24h_amazonia = raspar_dados_bioma(obter_html(url_amazonia_dados), 1, dia_do_mes - 2)
+    acumulado_mes_atual_amazonia = raspar_dados_bioma(obter_html(url_amazonia_dados), 1, 30)
+    total_mesmo_mes_ano_passado_amazonia = raspar_dados_bioma(obter_html(url_amazonia_dados), 0, 30)
 
-    # Encontrar o nome do mês correspondente ao número do mês atual
-    nome_mes_atual = None
-    for mes, numero in mapping_meses.items():
-        if numero == mes_atual - 1:  
-            nome_mes_atual = mes
-
+    # Obter dados do Cerrado
     print("Obtendo HTML da URL para Cerrado")
-    soup_cerrado = obter_html(url_cerrado)
-    focos_24h_cerrado = raspar_dados_bioma(soup_cerrado, 1, dia_do_mes - 2)
-    acumulado_mes_atual_cerrado = raspar_dados_bioma(soup_cerrado, 1, 30)
-    total_mesmo_mes_ano_passado_cerrado = raspar_dados_bioma(soup_cerrado, 0, 30)
+    focos_24h_cerrado = raspar_dados_bioma(obter_html(url_cerrado_dados), 1, dia_do_mes - 2)
+    acumulado_mes_atual_cerrado = raspar_dados_bioma(obter_html(url_cerrado_dados), 1, 30)
+    total_mesmo_mes_ano_passado_cerrado = raspar_dados_bioma(obter_html(url_cerrado_dados), 0, 30)
 
+    # Encontrar média e recorde mensal para a Amazônia
     print('Executando função de média e recorde mensal para Amazônia')
-    media_amazonia, recorde_amazonia = encontrar_media_e_recorde_mensal(soup_amazonia, nome_mes_atual)
+    media_amazonia, recorde_amazonia = encontrar_media_e_recorde_mensal(url_amazonia_media_recorde, data_atual.strftime("%B"))
 
+    # Encontrar média e recorde mensal para o Cerrado
     print('Executando função de média e recorde mensal para Cerrado')
-    media_cerrado, recorde_cerrado = encontrar_media_e_recorde_mensal(soup_cerrado, nome_mes_atual)
+    media_cerrado, recorde_cerrado = encontrar_media_e_recorde_mensal(url_cerrado_media_recorde, data_atual.strftime("%B"))
 
+    # Enviar e-mail com informações sobre Amazônia e Cerrado
     print("Enviando e-mail com informações sobre Amazônia e Cerrado")
     enviar_email(focos_24h_amazonia, acumulado_mes_atual_amazonia, total_mesmo_mes_ano_passado_amazonia, media_amazonia, recorde_amazonia,
                  focos_24h_cerrado, acumulado_mes_atual_cerrado, total_mesmo_mes_ano_passado_cerrado, media_cerrado, recorde_cerrado)
@@ -188,11 +187,13 @@ app = Flask(__name__)
 # Rota para enviar e-mail com dados da Amazônia e do Cerrado
 @app.route('/biomas')
 def biomas():
-    # URL da Amazônia
-    url_amazonia = 'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_amazonia.html'
-    # URL do Cerrado
-    url_cerrado = 'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_cerrado.html'
-    return obter_e_raspar_biomas(url_amazonia, url_cerrado)
+    # URLs dos dados da Amazônia e do Cerrado
+    url_amazonia_dados = 'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_amazonia.html'
+    url_cerrado_dados = 'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_cerrado.html'
+    # URLs para média e recorde mensal da Amazônia e do Cerrado
+    url_amazonia_media_recorde = 'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media//bioma/grafico_historico_estado_amazonia.html'
+    url_cerrado_media_recorde = 'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media//bioma/grafico_historico_estado_cerrado.html'
+    return obter_e_raspar_biomas(url_amazonia_dados, url_cerrado_dados, url_amazonia_media_recorde, url_cerrado_media_recorde)
 
 if __name__ == '__main__':
     app.run(debug=True)
