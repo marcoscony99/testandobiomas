@@ -47,6 +47,9 @@ def encontrar_media_e_recorde_mensal(soup, mes_solicitado):
     print("Encontrando média e recorde mensal...")
     quantidade_linhas = 27
     
+    resultado_media = ""
+    resultado_recorde = ""
+    
     if mes_solicitado.lower() in mapping_meses:
         mes_index = mapping_meses[mes_solicitado.lower()]
 
@@ -76,7 +79,7 @@ def encontrar_media_e_recorde_mensal(soup, mes_solicitado):
             resultado_recorde = f'Recorde do mês - {maior_valor_mensal} focos (no ano {ano_do_recorde_mensal})\n'
 
         # Retornar tanto a média quanto o recorde
-        return resultado_media, resultado_recorde
+    return resultado_media, resultado_recorde
 
 # Função para enviar o e-mail
 def enviar_email(focos_24h_amazonia, acumulado_mes_atual_amazonia, total_mesmo_mes_ano_passado_amazonia, media_amazonia, recorde_amazonia, 
@@ -86,7 +89,7 @@ def enviar_email(focos_24h_amazonia, acumulado_mes_atual_amazonia, total_mesmo_m
     email = os.environ.get("EMAIL")
     password = os.environ.get("PASSWORD")
     remetente = "marcoscony@gmail.com"
-    destinatarios = ["marcoscony@gmail.com", 'marcos.acony@g.globo']
+    destinatarios = ["marcoscony@gmail.com", 'marcos.acony@g.globo', 'alvarojusten@gmail.com']
     titulo = "Teste de email"
 
     texto = f"""
@@ -114,7 +117,7 @@ def enviar_email(focos_24h_amazonia, acumulado_mes_atual_amazonia, total_mesmo_m
           <li><b style="color: #555555;">Acumulado do mês atual</b> - {acumulado_mes_atual_amazonia} focos (vs {total_mesmo_mes_ano_passado_amazonia} focos totais no mesmo mês do ano passado)<br></li>
           <li><b style="color: orange;">{media_amazonia}</b><br></li>
           <li><b style="color: red;">{recorde_amazonia}</b><br></li>
-          
+
           <h2 style="color: #8B0000;"><b>CERRADO - FOCOS DE INCÊNDIO</b></h2>
           <li><b style="color: #555555;">24h</b> - {focos_24h_cerrado} focos<br></li>
           <li><b style="color: #555555;">Acumulado do mês atual</b> - {acumulado_mes_atual_cerrado} focos (vs {total_mesmo_mes_ano_passado_cerrado} focos totais no mesmo mês do ano passado)<br></li>
@@ -159,7 +162,7 @@ def obter_e_raspar_biomas(url_amazonia, url_cerrado):
     # Encontrar o nome do mês correspondente ao número do mês atual
     nome_mes_atual = None
     for mes, numero in mapping_meses.items():
-        if numero == mes_atual - 1: 
+        if numero == mes_atual - 1:  
             nome_mes_atual = mes
 
     print("Obtendo HTML da URL para Cerrado")
