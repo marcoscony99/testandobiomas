@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
-biomas = ['amazonia', 'cerrado']
+nomes_biomas = ['amazonia', 'cerrado']  # Renomeado de 'biomas' para 'nomes_biomas'
 
 # Mapeamento dos meses
 mapping_meses = {
@@ -122,7 +122,7 @@ def enviar_email_bioma(bioma, focos_24h, acumulado_mes_atual_bioma, total_mesmo_
     mensagem = MIMEMultipart("alternative")
     mensagem["From"] = remetente
     mensagem["To"] = ",".join(destinatarios)
-    mensagem["Subject"] = f'🔎 FOCO NOS FOCOS 🔥 - {bioma.upper()}'
+    mensagem["Subject"] = '🔎 FOCO NOS FOCOS 🔥'
     conteudo_texto = MIMEText(texto, "plain")
     conteudo_html = MIMEText(html, "html")
     mensagem.attach(conteudo_texto)
@@ -137,7 +137,7 @@ def enviar_email_bioma(bioma, focos_24h, acumulado_mes_atual_bioma, total_mesmo_
 
 # Código que roda tudo
 def run():
-    for bioma in biomas:
+    for bioma in nomes_biomas:  # Iterando sobre nomes_biomas
         print(f"Obtendo HTML da URL para {bioma.capitalize()}...")
         url_dados = f'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_{bioma}.html'
         soup = obter_html(url_dados)
