@@ -101,7 +101,7 @@ def enviar_email_biomas(informacoes_biomas):
     html = """
     <html>
       <body>
-        <h1 style="color: #8B0000;">FOCOS DE INCÊNDIO</h1>
+        <h1 style="color: #8B0000;">🔎 FOCO NOS FOCOS 🔥</h1>
     """
 
     for bioma_info in informacoes_biomas:
@@ -113,7 +113,7 @@ def enviar_email_biomas(informacoes_biomas):
         recorde = bioma_info['recorde']
 
         texto += f"""
-        {bioma.upper()} - FOCOS DE INCÊNDIO
+        {bioma.upper()}
 
         24h - {focos_24h} focos
         Acumulado do mês atual - {acumulado_mes_atual_bioma} focos (vs {total_mesmo_mes_ano_passado_bioma} focos totais no mesmo mês do ano passado)
@@ -123,7 +123,7 @@ def enviar_email_biomas(informacoes_biomas):
         """
 
         html += f"""
-        <h2 style="color: #8B0000;"><b>{bioma.upper()} - FOCOS DE INCÊNDIO</b></h2>
+        <h2 style="color: #8B0000;"><b>{bioma.upper()}</b></h2>
         <ul>
           <li><b style="color: #555555;">24h</b> - {focos_24h} focos</li>
           <li><b style="color: #555555;">Acumulado do mês atual</b> - {acumulado_mes_atual_bioma} focos (vs {total_mesmo_mes_ano_passado_bioma} focos totais no mesmo mês do ano passado)</li>
