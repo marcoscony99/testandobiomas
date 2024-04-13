@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
-nomes_biomas = ['amazonia', 'cerrado']  # Renomeado de 'biomas' para 'nomes_biomas'
+nomes_biomas = ['amazonia', 'cerrado', 'pantanal', 'mata_atlantica', 'caatinga', 'pampa']  # Renomeado de 'biomas' para 'nomes_biomas'
 
 # Mapeamento dos meses
 mapping_meses = {
