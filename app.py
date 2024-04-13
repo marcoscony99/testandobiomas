@@ -83,7 +83,7 @@ def encontrar_media_e_recorde_mensal(soup, mes_solicitado):
         return resultado_media, resultado_recorde
 
 #parte do código que vai enviar o e-mail do bioma específico
-def enviar_email_bioma(bioma, focos_24h, acumulado_mes_atual_bioma, total_mesmo_mes_ano_passado_bioma, media, recorde):
+def enviar_email_biomas(informacoes_biomas):
     smtp_server = "smtp-relay.brevo.com"
     port = 587
     email = os.environ.get("EMAIL")
@@ -92,51 +92,70 @@ def enviar_email_bioma(bioma, focos_24h, acumulado_mes_atual_bioma, total_mesmo_
     destinatarios = ["marcoscony@gmail.com", 'marcos.acony@g.globo']
     titulo = "Teste de email"
 
-    texto = f"""
-    {bioma.upper()} - FOCOS DE INCÊNDIO
-
-    24h - {focos_24h} focos
-    Acumulado do mês atual - {acumulado_mes_atual_bioma} focos (vs {total_mesmo_mes_ano_passado_bioma} focos totais no mesmo mês do ano passado)
-    {media}
-    {recorde}
-    """
-
-    html = f"""
-    <html>
-      <body>
-        <ul>
-          <h2 style="color: #8B0000;"><b>{bioma.upper()} - FOCOS DE INCÊNDIO</b></h2>
-          <li><b style="color: #555555;">24h</b> - {focos_24h} focos<br></li>
-          <li><b style="color: #555555;">Acumulado do mês atual</b> - {acumulado_mes_atual_bioma} focos (vs {total_mesmo_mes_ano_passado_bioma} focos totais no mesmo mês do ano passado)<br></li>
-          <li><b style="color: orange;">{media}</b><br></li>
-          <li><b style="color: red;">{recorde}</b><br></li>
-        </ul>
-      </body>
-    </html>
-    """
-
-    server = smtplib.SMTP(smtp_server, port)
-    server.starttls()
-    server.login(email, password)
-
     mensagem = MIMEMultipart("alternative")
     mensagem["From"] = remetente
     mensagem["To"] = ",".join(destinatarios)
     mensagem["Subject"] = '🔎 FOCO NOS FOCOS 🔥'
+
+    texto = ""
+    html = """
+    <html>
+      <body>
+        <h1 style="color: #8B0000;">FOCOS DE INCÊNDIO</h1>
+    """
+
+    for bioma_info in informacoes_biomas:
+        bioma = bioma_info['bioma']
+        focos_24h = bioma_info['focos_24h']
+        acumulado_mes_atual_bioma = bioma_info['acumulado_mes_atual_bioma']
+        total_mesmo_mes_ano_passado_bioma = bioma_info['total_mesmo_mes_ano_passado_bioma']
+        media = bioma_info['media']
+        recorde = bioma_info['recorde']
+
+        texto += f"""
+        {bioma.upper()} - FOCOS DE INCÊNDIO
+
+        24h - {focos_24h} focos
+        Acumulado do mês atual - {acumulado_mes_atual_bioma} focos (vs {total_mesmo_mes_ano_passado_bioma} focos totais no mesmo mês do ano passado)
+        {media}
+        {recorde}
+
+        """
+
+        html += f"""
+        <h2 style="color: #8B0000;"><b>{bioma.upper()} - FOCOS DE INCÊNDIO</b></h2>
+        <ul>
+          <li><b style="color: #555555;">24h</b> - {focos_24h} focos</li>
+          <li><b style="color: #555555;">Acumulado do mês atual</b> - {acumulado_mes_atual_bioma} focos (vs {total_mesmo_mes_ano_passado_bioma} focos totais no mesmo mês do ano passado)</li>
+          <li><b style="color: orange;">{media}</b></li>
+          <li><b style="color: red;">{recorde}</b></li>
+        </ul>
+        """
+
+    html += """
+      </body>
+    </html>
+    """
+
     conteudo_texto = MIMEText(texto, "plain")
     conteudo_html = MIMEText(html, "html")
     mensagem.attach(conteudo_texto)
     mensagem.attach(conteudo_html)
 
-    print(f'Enviando e-mail para {bioma.upper()}')
+    server = smtplib.SMTP(smtp_server, port)
+    server.starttls()
+    server.login(email, password)
+
+    print("Enviando e-mail para os biomas...")
     server.sendmail(remetente, destinatarios, mensagem.as_string())
     server.quit()
 
-    print(f"E-mail para {bioma.upper()} enviado com sucesso.")
-
+    print("E-mails para os biomas enviados com sucesso.")
 
 # Código que roda tudo
 def run():
+    informacoes_biomas = []
+
     for bioma in nomes_biomas:  # Iterando sobre nomes_biomas
         print(f"Obtendo HTML da URL para {bioma.capitalize()}...")
         url_dados = f'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_{bioma}.html'
@@ -160,10 +179,22 @@ def run():
 
         print(f'Executando função de média e recorde mensal para {bioma.capitalize()}')
         media, recorde = encontrar_media_e_recorde_mensal(soup_media_recorde, nome_mes_atual)
-        print(f"Enviando email para {bioma.capitalize()}...")
-        enviar_email_bioma(bioma, focos_24h, acumulado_mes_atual_bioma, total_mesmo_mes_ano_passado_bioma, media, recorde)
         
-    return "E-mails enviados com sucesso para os biomas!"
+        # Armazenar informações do bioma em uma lista
+        informacoes_biomas.append({
+            'bioma': bioma,
+            'focos_24h': focos_24h,
+            'acumulado_mes_atual_bioma': acumulado_mes_atual_bioma,
+            'total_mesmo_mes_ano_passado_bioma': total_mesmo_mes_ano_passado_bioma,
+            'media': media,
+            'recorde': recorde
+        })
+
+    print("Enviando e-mail para todos os biomas...")
+    enviar_email_biomas(informacoes_biomas)
+    
+    return "E-mail enviado com sucesso!"
+
 
 app = Flask(__name__)
 
