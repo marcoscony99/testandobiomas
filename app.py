@@ -153,11 +153,22 @@ def enviar_email_biomas(informacoes_biomas):
     print("E-mails para os biomas enviados com sucesso.")
 
 # Código que roda tudo
+# Mapeamento dos nomes dos biomas com acento
+mapeamento_biomas = {
+    'amazonia': 'AMAZÔNIA',
+    'cerrado': 'CERRADO',
+    'pantanal': 'PANTANAL',
+    'mata_atlantica': 'MATA ATLÂNTICA',
+    'caatinga': 'CAATINGA',
+    'pampa': 'PAMPA'
+}
+
 def run():
     informacoes_biomas = []
 
     for bioma in nomes_biomas:  # Iterando sobre nomes_biomas
-        print(f"Obtendo HTML da URL para {bioma.capitalize()}...")
+        bioma_capitalizado = mapeamento_biomas.get(bioma, bioma.replace("_", " ").capitalize())  # Capitaliza e substitui "_" por espaço
+        print(f"Obtendo HTML da URL para {bioma_capitalizado}...")
         url_dados = f'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_{bioma}.html'
         soup = obter_html(url_dados)
         data_atual = datetime.now()
@@ -173,16 +184,16 @@ def run():
             if numero == mes_atual - 1:  # Subtraímos 1 porque os meses em Python vão de 1 a 12
                 nome_mes_atual = mes
 
-        print(f"Obtendo HTML da URL para média e recorde do {bioma.capitalize()}...")
+        print(f"Obtendo HTML da URL para média e recorde do {bioma_capitalizado}...")
         url_media_recorde = f'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media//bioma/grafico_historico_estado_{bioma}.html'
         soup_media_recorde = obter_html(url_media_recorde)
 
-        print(f'Executando função de média e recorde mensal para {bioma.capitalize()}')
+        print(f'Executando função de média e recorde mensal para {bioma_capitalizado}')
         media, recorde = encontrar_media_e_recorde_mensal(soup_media_recorde, nome_mes_atual)
         
         # Armazenar informações do bioma em uma lista
         informacoes_biomas.append({
-            'bioma': bioma,
+            'bioma': bioma_capitalizado,
             'focos_24h': focos_24h,
             'acumulado_mes_atual_bioma': acumulado_mes_atual_bioma,
             'total_mesmo_mes_ano_passado_bioma': total_mesmo_mes_ano_passado_bioma,
@@ -194,6 +205,7 @@ def run():
     enviar_email_biomas(informacoes_biomas)
     
     return "E-mail enviado com sucesso!"
+
 
 
 app = Flask(__name__)
