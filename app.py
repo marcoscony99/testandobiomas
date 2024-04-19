@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from flask import Flask, render_template
 import os
 from dotenv import load_dotenv
+import calendar
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -166,34 +167,35 @@ mapeamento_biomas = {
 def run():
     informacoes_biomas = []
 
-    for bioma in nomes_biomas:  # Iterando sobre nomes_biomas
-        bioma_capitalizado = mapeamento_biomas.get(bioma, bioma.replace("_", " ").capitalize())  # Capitaliza e substitui "_" por espaço
-        print(f"Obtendo HTML da URL para {bioma_capitalizado}...")
+    for bioma in nomes_biomas:
+        print(f"Obtendo HTML da URL para {bioma.capitalize()}...")
         url_dados = f'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_{bioma}.html'
         soup = obter_html(url_dados)
         data_atual = datetime.now()
         dia_do_mes = data_atual.day
+        
+        # Obtenha o número de dias do mês atual
+        numero_dias_mes = calendar.monthrange(data_atual.year, data_atual.month)[1]
+        
         focos_24h = raspar_dados_bioma(soup, 1, dia_do_mes - 2)
-        acumulado_mes_atual_bioma = raspar_dados_bioma(soup, 1, 30)
-        total_mesmo_mes_ano_passado_bioma = raspar_dados_bioma(soup, 0, 30)
+        acumulado_mes_atual_bioma = raspar_dados_bioma(soup, 1, numero_dias_mes)  # Use o número de dias do mês como parâmetro
+        total_mesmo_mes_ano_passado_bioma = raspar_dados_bioma(soup, 0, numero_dias_mes)  # Use o número de dias do mês como parâmetro
         mes_atual = data_atual.month
 
-        # Encontrar o nome do mês correspondente ao número do mês atual
         nome_mes_atual = None
         for mes, numero in mapping_meses.items():
-            if numero == mes_atual - 1:  # Subtraímos 1 porque os meses em Python vão de 1 a 12
+            if numero == mes_atual - 1:
                 nome_mes_atual = mes
 
-        print(f"Obtendo HTML da URL para média e recorde do {bioma_capitalizado}...")
+        print(f"Obtendo HTML da URL para média e recorde do {bioma.capitalize()}...")
         url_media_recorde = f'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media//bioma/grafico_historico_estado_{bioma}.html'
         soup_media_recorde = obter_html(url_media_recorde)
 
-        print(f'Executando função de média e recorde mensal para {bioma_capitalizado}')
+        print(f'Executando função de média e recorde mensal para {bioma.capitalize()}')
         media, recorde = encontrar_media_e_recorde_mensal(soup_media_recorde, nome_mes_atual)
         
-        # Armazenar informações do bioma em uma lista
         informacoes_biomas.append({
-            'bioma': bioma_capitalizado,
+            'bioma': bioma,
             'focos_24h': focos_24h,
             'acumulado_mes_atual_bioma': acumulado_mes_atual_bioma,
             'total_mesmo_mes_ano_passado_bioma': total_mesmo_mes_ano_passado_bioma,
@@ -205,7 +207,6 @@ def run():
     enviar_email_biomas(informacoes_biomas)
     
     return "E-mail enviado com sucesso!"
-
 
 
 app = Flask(__name__)
