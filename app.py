@@ -4,7 +4,7 @@ from datetime import datetime
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from flask import Flask, render_template
+from flask import Flask
 import os
 from dotenv import load_dotenv
 import calendar
@@ -30,7 +30,17 @@ mapping_meses = {
     'dezembro': 11
 }
 
-# função para pegar a "sopa", dado um html
+# Mapeamento dos nomes dos biomas com acento
+mapeamento_biomas = {
+    'amazonia': 'AMAZÔNIA',
+    'cerrado': 'CERRADO',
+    'pantanal': 'PANTANAL',
+    'mata_atlantica': 'MATA ATLÂNTICA',
+    'caatinga': 'CAATINGA',
+    'pampa': 'PAMPA'
+}
+
+# Função para pegar a "sopa", dado um html
 def obter_html(url):
     print("Obtendo HTML de:", url)
     req = requests.get(url)
@@ -38,14 +48,12 @@ def obter_html(url):
     soup = BeautifulSoup(html, 'html.parser')
     return soup
 
-
 # Dado um html, raspa os dados de uma célula específica
 def raspar_dados_bioma(soup, row, col):
     print("Raspando dados do bioma...")
     celulas_coluna = soup.findAll('td', {'class': f'data row{row} col{col}'})
     valores_coluna = [celula.text.strip() for celula in celulas_coluna]
     return valores_coluna[0] if valores_coluna else None
-
 
 # Função para encontrar a média e o recorde mensal
 def encontrar_media_e_recorde_mensal(soup, mes_solicitado):
@@ -83,7 +91,7 @@ def encontrar_media_e_recorde_mensal(soup, mes_solicitado):
         # Retornar tanto a média quanto o recorde
         return resultado_media, resultado_recorde
 
-#parte do código que vai enviar o e-mail do bioma específico
+# Parte do código que vai enviar o e-mail do bioma específico
 def enviar_email_biomas(informacoes_biomas):
     smtp_server = "smtp-relay.brevo.com"
     port = 587
@@ -107,6 +115,7 @@ def enviar_email_biomas(informacoes_biomas):
 
     for bioma_info in informacoes_biomas:
         bioma = bioma_info['bioma']
+        nome_bioma_com_acento = mapeamento_biomas.get(bioma, bioma.upper())
         focos_24h = bioma_info['focos_24h']
         acumulado_mes_atual_bioma = bioma_info['acumulado_mes_atual_bioma']
         total_mesmo_mes_ano_passado_bioma = bioma_info['total_mesmo_mes_ano_passado_bioma']
@@ -114,7 +123,7 @@ def enviar_email_biomas(informacoes_biomas):
         recorde = bioma_info['recorde']
 
         texto += f"""
-        {bioma.upper()}
+        {nome_bioma_com_acento}
 
         24h - {focos_24h} focos
         Acumulado do mês atual - {acumulado_mes_atual_bioma} focos (vs {total_mesmo_mes_ano_passado_bioma} focos totais no mesmo mês do ano passado)
@@ -124,7 +133,7 @@ def enviar_email_biomas(informacoes_biomas):
         """
 
         html += f"""
-        <h2 style="color: #8B0000;"><b>{bioma.upper()}</b></h2>
+        <h2 style="color: #8B0000;"><b>{nome_bioma_com_acento}</b></h2>
         <ul>
           <li><b style="color: #555555;">24h</b> - {focos_24h} focos</li>
           <li><b style="color: #555555;">Acumulado do mês atual</b> - {acumulado_mes_atual_bioma} focos (vs {total_mesmo_mes_ano_passado_bioma} focos totais no mesmo mês do ano passado)</li>
@@ -154,16 +163,6 @@ def enviar_email_biomas(informacoes_biomas):
     print("E-mails para os biomas enviados com sucesso.")
 
 # Código que roda tudo
-# Mapeamento dos nomes dos biomas com acento
-mapeamento_biomas = {
-    'amazonia': 'AMAZÔNIA',
-    'cerrado': 'CERRADO',
-    'pantanal': 'PANTANAL',
-    'mata_atlantica': 'MATA ATLÂNTICA',
-    'caatinga': 'CAATINGA',
-    'pampa': 'PAMPA'
-}
-
 def run():
     informacoes_biomas = []
 
@@ -207,7 +206,6 @@ def run():
     enviar_email_biomas(informacoes_biomas)
     
     return "E-mail enviado com sucesso!"
-
 
 app = Flask(__name__)
 
