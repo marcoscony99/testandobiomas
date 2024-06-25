@@ -168,7 +168,7 @@ def run():
 
     for bioma in nomes_biomas:
         print(f"Obtendo HTML da URL para {bioma.capitalize()}...")
-        url_dados = f'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_{bioma}.html'
+        url_dados = f'https://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_{bioma}.html'
         soup = obter_html(url_dados)
         data_atual = datetime.now()
         dia_do_mes = data_atual.day
@@ -187,7 +187,7 @@ def run():
                 nome_mes_atual = mes
 
         print(f"Obtendo HTML da URL para média e recorde do {bioma.capitalize()}...")
-        url_media_recorde = f'http://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media//bioma/grafico_historico_estado_{bioma}.html'
+        url_media_recorde = f'https://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media//bioma/grafico_historico_estado_{bioma}.html'
         soup_media_recorde = obter_html(url_media_recorde)
 
         print(f'Executando função de média e recorde mensal para {bioma.capitalize()}')
