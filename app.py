@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-import pytz
+import pytz  # Importa a biblioteca pytz
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -13,7 +13,10 @@ import calendar
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
-nomes_biomas = ['amazonia', 'cerrado', 'pantanal', 'mata_atlantica', 'caatinga', 'pampa']  # Renomeado de 'biomas' para 'nomes_biomas'
+# Cria um timezone para Brasília
+tz_brasilia = pytz.timezone('America/Sao_Paulo')
+
+nomes_biomas = ['amazonia', 'cerrado', 'pantanal', 'mata_atlantica', 'caatinga', 'pampa']
 
 # Mapeamento dos meses
 mapping_meses = {
@@ -41,7 +44,6 @@ mapeamento_biomas = {
     'pampa': 'PAMPA'
 }
 
-# Função para pegar a "sopa", dado um html
 def obter_html(url):
     print("Obtendo HTML de:", url)
     req = requests.get(url)
@@ -49,14 +51,12 @@ def obter_html(url):
     soup = BeautifulSoup(html, 'html.parser')
     return soup
 
-# Dado um html, raspa os dados de uma célula específica
 def raspar_dados_bioma(soup, row, col):
     print("Raspando dados do bioma...")
     celulas_coluna = soup.findAll('td', {'class': f'data row{row} col{col}'})
     valores_coluna = [celula.text.strip() for celula in celulas_coluna]
     return valores_coluna[0] if valores_coluna else None
 
-# Função para encontrar a média e o recorde mensal
 def encontrar_media_e_recorde_mensal(soup, mes_solicitado):
     print("Encontrando média e recorde mensal...")
     quantidade_linhas = 27
@@ -64,35 +64,28 @@ def encontrar_media_e_recorde_mensal(soup, mes_solicitado):
     if mes_solicitado.lower() in mapping_meses:
         mes_index = mapping_meses[mes_solicitado.lower()]
 
-        # Encontrar as células da coluna específica do mês solicitado para calcular a média
         celulas_mensal = soup.findAll('td', {'class': f'data row28 col{mes_index}'})
-        valores_mensal = [int(celula.text.strip()) for celula in celulas_mensal if celula.text.strip().isdigit()]  # Convertendo e filtrando valores inteiros
+        valores_mensal = [int(celula.text.strip()) for celula in celulas_mensal if celula.text.strip().isdigit()]
 
-        # Calcular a média
         if valores_mensal:
             media_mensal = sum(valores_mensal) / len(valores_mensal)
             resultado_media = f'Média do mês - {int(media_mensal)} focos\n'
 
-        # Encontrar o recorde de focos para o mês solicitado
         lista_mensal = []
         for y in range(quantidade_linhas):
-            # Procurando, em todas as linhas, quais células da coluna têm o valor do recorde
             celulas_mensal = soup.findAll('td', {'class': f'data row{y} col{mes_index}'})
-            valores_mensal = [int(celula.text.strip()) for celula in celulas_mensal if celula.text.strip().isdigit()]  # Convertendo e filtrando valores inteiros
+            valores_mensal = [int(celula.text.strip()) for celula in celulas_mensal if celula.text.strip().isdigit()]
             lista_mensal.extend(valores_mensal)
 
-        # Calcular o recorde
         if lista_mensal:
             maior_valor_mensal = max(lista_mensal)
             ano_do_recorde_mensal = 1999 + lista_mensal.index(maior_valor_mensal)
-            if mes_index >= 5:  # Se o mês for junho ou posterior, subtrai 1 do ano do recorde
+            if mes_index >= 5:
                 ano_do_recorde_mensal = ano_do_recorde_mensal - 1
             resultado_recorde = f'Recorde do mês - {maior_valor_mensal} focos (no ano {ano_do_recorde_mensal})\n'
 
-        # Retornar tanto a média quanto o recorde
         return resultado_media, resultado_recorde
 
-# Parte do código que vai enviar o e-mail do bioma específico
 def enviar_email_biomas(informacoes_biomas):
     smtp_server = "smtp-relay.brevo.com"
     port = 587
@@ -163,7 +156,6 @@ def enviar_email_biomas(informacoes_biomas):
 
     print("E-mails para os biomas enviados com sucesso.")
 
-# Código que roda tudo
 def run():
     informacoes_biomas = []
 
@@ -171,19 +163,14 @@ def run():
         print(f"Obtendo HTML da URL para {bioma.capitalize()}...")
         url_dados = f'https://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_{bioma}.html'
         soup = obter_html(url_dados)
-        
-        # Configurando o fuso horário para Brasília
-        fuso_horario_brasilia = pytz.timezone('America/Sao_Paulo')
-        data_atual = datetime.now(fuso_horario_brasilia)
-        
+        data_atual = datetime.now(tz_brasilia)  # Obtém a data e hora atual no fuso horário de Brasília
         dia_do_mes = data_atual.day
         
-        # Obtenha o número de dias do mês atual
         numero_dias_mes = calendar.monthrange(data_atual.year, data_atual.month)[1]
         
         focos_24h = raspar_dados_bioma(soup, 1, dia_do_mes - 2)
-        acumulado_mes_atual_bioma = raspar_dados_bioma(soup, 1, numero_dias_mes)  # Use o número de dias do mês como parâmetro
-        total_mesmo_mes_ano_passado_bioma = raspar_dados_bioma(soup, 0, numero_dias_mes)  # Use o número de dias do mês como parâmetro
+        acumulado_mes_atual_bioma = raspar_dados_bioma(soup, 1, numero_dias_mes)
+        total_mesmo_mes_ano_passado_bioma = raspar_dados_bioma(soup, 0, numero_dias_mes)
         mes_atual = data_atual.month
 
         nome_mes_atual = None
@@ -216,7 +203,6 @@ app = Flask(__name__)
 
 @app.route('/biomas')
 def biomas():
-    # Chama a função run, que tem como objetivo disparar o e-mail
     return run()
 
 if __name__ == '__main__':
