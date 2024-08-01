@@ -168,7 +168,7 @@ def run():
         
         numero_dias_mes = calendar.monthrange(data_atual.year, data_atual.month)[1]
         
-        focos_24h = raspar_dados_bioma(soup, 1, dia_do_mes - 2)
+        focos_24h = raspar_dados_bioma(soup, 1, dia_do_mes - 1)
         acumulado_mes_atual_bioma = raspar_dados_bioma(soup, 1, numero_dias_mes)
         total_mesmo_mes_ano_passado_bioma = raspar_dados_bioma(soup, 0, numero_dias_mes)
         mes_atual = data_atual.month
