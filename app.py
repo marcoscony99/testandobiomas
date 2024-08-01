@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+import pytz
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -170,7 +171,11 @@ def run():
         print(f"Obtendo HTML da URL para {bioma.capitalize()}...")
         url_dados = f'https://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_{bioma}.html'
         soup = obter_html(url_dados)
-        data_atual = datetime.now()
+        
+        # Configurando o fuso horário para Brasília
+        fuso_horario_brasilia = pytz.timezone('America/Sao_Paulo')
+        data_atual = datetime.now(fuso_horario_brasilia)
+        
         dia_do_mes = data_atual.day
         
         # Obtenha o número de dias do mês atual
