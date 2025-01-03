@@ -59,12 +59,12 @@ def raspar_dados_bioma(soup, row, col):
 
 def encontrar_media_e_recorde_mensal(soup, mes_solicitado):
     print("Encontrando média e recorde mensal...")
-    quantidade_linhas = 27
+    quantidade_linhas = 28
     
     if mes_solicitado.lower() in mapping_meses:
         mes_index = mapping_meses[mes_solicitado.lower()]
 
-        celulas_mensal = soup.findAll('td', {'class': f'data row28 col{mes_index}'})
+        celulas_mensal = soup.findAll('td', {'class': f'data row29 col{mes_index}'})
         valores_mensal = [int(celula.text.strip()) for celula in celulas_mensal if celula.text.strip().isdigit()]
 
         if valores_mensal:
