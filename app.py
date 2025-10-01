@@ -1,24 +1,24 @@
+import os
+import json
+import calendar
+from datetime import datetime
+
+import pytz
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
-import pytz  # Importa a biblioteca pytz
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from flask import Flask
-import os
 from dotenv import load_dotenv
-import calendar
 
-# Carrega as variáveis de ambiente do arquivo .env
+# --- ENV ---
+# Em produção no Render, as env vars vêm do painel; load_dotenv() só ajuda localmente.
 load_dotenv()
 
-# Cria um timezone para Brasília
+# --- TIMEZONE ---
 tz_brasilia = pytz.timezone('America/Sao_Paulo')
 
+# --- CONSTANTES ---
 nomes_biomas = ['amazonia', 'cerrado', 'pantanal', 'mata_atlantica', 'caatinga', 'pampa']
 
-# Mapeamento dos meses
 mapping_meses = {
     'janeiro': 0,
     'fevereiro': 1,
@@ -34,7 +34,6 @@ mapping_meses = {
     'dezembro': 11
 }
 
-# Mapeamento dos nomes dos biomas com acento
 mapeamento_biomas = {
     'amazonia': 'AMAZÔNIA',
     'cerrado': 'CERRADO',
@@ -44,62 +43,75 @@ mapeamento_biomas = {
     'pampa': 'PAMPA'
 }
 
-def obter_html(url):
+# --- HELPERS DE RASPAGEM ---
+def obter_html(url: str) -> BeautifulSoup:
     print("Obtendo HTML de:", url)
-    req = requests.get(url)
-    html = req.content
-    soup = BeautifulSoup(html, 'html.parser')
+    # timeout para evitar travar o worker; raise_for_status para falhas HTTP
+    req = requests.get(url, timeout=20)
+    req.raise_for_status()
+    soup = BeautifulSoup(req.content, 'html.parser')
     return soup
 
-def raspar_dados_bioma(soup, row, col):
-    print("Raspando dados do bioma...")
+def raspar_dados_bioma(soup: BeautifulSoup, row: int, col: int):
+    # As classes na página seguem o padrão 'data row{row} col{col}'
     celulas_coluna = soup.findAll('td', {'class': f'data row{row} col{col}'})
     valores_coluna = [celula.text.strip() for celula in celulas_coluna]
     return valores_coluna[0] if valores_coluna else None
 
-def encontrar_media_e_recorde_mensal(soup, mes_solicitado):
+def encontrar_media_e_recorde_mensal(soup: BeautifulSoup, mes_solicitado: str):
+    """
+    Retorna duas strings formatadas:
+      - 'Média do mês - X focos'
+      - 'Recorde do mês - Y focos (no ano Z)'
+    Em caso de dados ausentes, retorna 'n/d'.
+    """
     print("Encontrando média e recorde mensal...")
-    quantidade_linhas = 28
-    
-    if mes_solicitado.lower() in mapping_meses:
-        mes_index = mapping_meses[mes_solicitado.lower()]
+    quantidade_linhas = 28  # anos na tabela
+    resultado_media = 'Média do mês - n/d'
+    resultado_recorde = 'Recorde do mês - n/d'
 
-        celulas_mensal = soup.findAll('td', {'class': f'data row29 col{mes_index}'})
-        valores_mensal = [int(celula.text.strip()) for celula in celulas_mensal if celula.text.strip().isdigit()]
-
-        if valores_mensal:
-            media_mensal = sum(valores_mensal) / len(valores_mensal)
-            resultado_media = f'Média do mês - {int(media_mensal)} focos\n'
-
-        lista_mensal = []
-        for y in range(quantidade_linhas):
-            celulas_mensal = soup.findAll('td', {'class': f'data row{y} col{mes_index}'})
-            valores_mensal = [int(celula.text.strip()) for celula in celulas_mensal if celula.text.strip().isdigit()]
-            lista_mensal.extend(valores_mensal)
-
-        if lista_mensal:
-            maior_valor_mensal = max(lista_mensal)
-            ano_do_recorde_mensal = 1999 + lista_mensal.index(maior_valor_mensal)
-            if mes_index >= 5:
-                ano_do_recorde_mensal = ano_do_recorde_mensal - 1
-            resultado_recorde = f'Recorde do mês - {maior_valor_mensal} focos (no ano {ano_do_recorde_mensal})\n'
-
+    if not mes_solicitado:
         return resultado_media, resultado_recorde
 
+    mes_idx = mapping_meses.get(mes_solicitado.lower())
+    if mes_idx is None:
+        return resultado_media, resultado_recorde
+
+    # Média na linha 29 (índice 29 no HTML)
+    celulas_mensal = soup.findAll('td', {'class': f'data row29 col{mes_idx}'})
+    valores_mensal = [int(cel.text.strip()) for cel in celulas_mensal if cel.text.strip().isdigit()]
+    if valores_mensal:
+        media_mensal = sum(valores_mensal) / len(valores_mensal)
+        resultado_media = f'Média do mês - {int(media_mensal)} focos'
+
+    # Recorde: percorre linhas por ano
+    lista_mensal = []
+    for y in range(quantidade_linhas):
+        cel_y = soup.findAll('td', {'class': f'data row{y} col{mes_idx}'})
+        vals_y = [int(cel.text.strip()) for cel in cel_y if cel.text.strip().isdigit()]
+        lista_mensal.extend(vals_y)
+
+    if lista_mensal:
+        maior_valor = max(lista_mensal)
+        ano_recorde = 1999 + lista_mensal.index(maior_valor)
+        # Ajuste de ano se a coluna for >= junho (copiado da sua lógica original)
+        if mes_idx >= 5:
+            ano_recorde = ano_recorde - 1
+        resultado_recorde = f'Recorde do mês - {maior_valor} focos (no ano {ano_recorde})'
+
+    return resultado_media, resultado_recorde
+
+# --- ENVIO DE E-MAIL VIA API DO BREVO (sem SMTP) ---
 def enviar_email_biomas(informacoes_biomas):
-    smtp_server = "smtp-relay.brevo.com"
-    port = 587
-    email = os.environ.get("EMAIL")
-    password = os.environ.get("PASSWORD")
-    remetente = "marcoscony@gmail.com"
-    destinatarios = ["marcoscony@gmail.com", 'marcos.acony@g.globo']
-    titulo = "Teste de email"
+    api_key = os.environ.get("BREVO_API_KEY")
+    if not api_key:
+        raise RuntimeError("BREVO_API_KEY não configurada nas variáveis de ambiente.")
 
-    mensagem = MIMEMultipart("alternative")
-    mensagem["From"] = remetente
-    mensagem["To"] = ",".join(destinatarios)
-    mensagem["Subject"] = '🔎 FOCO NOS FOCOS 🔥'
+    remetente = os.environ.get("SENDER_EMAIL", "marcoscony@gmail.com")
+    destinatarios = ["marcoscony@gmail.com", "marcos.acony@g.globo"]
+    assunto = "🔎 FOCO NOS FOCOS 🔥"
 
+    # Monta conteúdo de texto e HTML
     texto = ""
     html = """
     <html>
@@ -117,14 +129,14 @@ def enviar_email_biomas(informacoes_biomas):
         recorde = bioma_info['recorde']
 
         texto += f"""
-        {nome_bioma_com_acento}
+{nome_bioma_com_acento}
 
-        24h - {focos_24h} focos
-        Acumulado do mês atual - {acumulado_mes_atual_bioma} focos (vs {total_mesmo_mes_ano_passado_bioma} focos totais no mesmo mês do ano passado)
-        {media}
-        {recorde}
+24h - {focos_24h} focos
+Acumulado do mês atual - {acumulado_mes_atual_bioma} focos (vs {total_mesmo_mes_ano_passado_bioma} focos totais no mesmo mês do ano passado)
+{media}
+{recorde}
 
-        """
+"""
 
         html += f"""
         <h2 style="color: #8B0000;"><b>{nome_bioma_com_acento}</b></h2>
@@ -141,21 +153,30 @@ def enviar_email_biomas(informacoes_biomas):
     </html>
     """
 
-    conteudo_texto = MIMEText(texto, "plain")
-    conteudo_html = MIMEText(html, "html")
-    mensagem.attach(conteudo_texto)
-    mensagem.attach(conteudo_html)
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "api-key": api_key,
+    }
+    payload = {
+        "sender": {"email": remetente, "name": "Foco nos Focos"},
+        "to": [{"email": e} for e in destinatarios],
+        "subject": assunto,
+        "textContent": texto,
+        "htmlContent": html,
+    }
 
-    server = smtplib.SMTP(smtp_server, port)
-    server.starttls()
-    server.login(email, password)
+    print("Enviando e-mail via Brevo API...")
+    resp = requests.post(url, headers=headers, json=payload, timeout=20)
+    try:
+        resp.raise_for_status()
+    except Exception:
+        print("Erro no envio:", resp.status_code, resp.text)
+        raise
+    print("E-mails enviados com sucesso via Brevo API.")
 
-    print("Enviando e-mail para os biomas...")
-    server.sendmail(remetente, destinatarios, mensagem.as_string())
-    server.quit()
-
-    print("E-mails para os biomas enviados com sucesso.")
-
+# --- PIPELINE PRINCIPAL ---
 def run():
     informacoes_biomas = []
 
@@ -163,16 +184,17 @@ def run():
         print(f"Obtendo HTML da URL para {bioma.capitalize()}...")
         url_dados = f'https://terrabrasilis.dpi.inpe.br/queimadas/situacao-atual/media/bioma/grafico_historico_mes_atual_estado_{bioma}.html'
         soup = obter_html(url_dados)
-        data_atual = datetime.now(tz_brasilia)  # Obtém a data e hora atual no fuso horário de Brasília
+
+        data_atual = datetime.now(tz_brasilia)
         dia_do_mes = data_atual.day
-        
         numero_dias_mes = calendar.monthrange(data_atual.year, data_atual.month)[1]
-        
+
+        # Colunas no HTML parecem 0-based; mantém sua lógica original
         focos_24h = raspar_dados_bioma(soup, 1, dia_do_mes - 1)
         acumulado_mes_atual_bioma = raspar_dados_bioma(soup, 1, numero_dias_mes)
         total_mesmo_mes_ano_passado_bioma = raspar_dados_bioma(soup, 0, numero_dias_mes)
-        mes_atual = data_atual.month
 
+        mes_atual = data_atual.month
         nome_mes_atual = None
         for mes, numero in mapping_meses.items():
             if numero == mes_atual - 1:
@@ -184,7 +206,7 @@ def run():
 
         print(f'Executando função de média e recorde mensal para {bioma.capitalize()}')
         media, recorde = encontrar_media_e_recorde_mensal(soup_media_recorde, nome_mes_atual)
-        
+
         informacoes_biomas.append({
             'bioma': bioma,
             'focos_24h': focos_24h,
@@ -196,9 +218,10 @@ def run():
 
     print("Enviando e-mail para todos os biomas...")
     enviar_email_biomas(informacoes_biomas)
-    
+
     return "E-mail enviado com sucesso!"
 
+# --- FLASK APP ---
 app = Flask(__name__)
 
 @app.route('/biomas')
@@ -206,4 +229,5 @@ def biomas():
     return run()
 
 if __name__ == '__main__':
+    # Em ambientes locais, o debug ajuda. No Render, use o start command padrão.
     app.run(debug=True)
