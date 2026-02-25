@@ -66,7 +66,7 @@ def encontrar_media_e_recorde_mensal(soup: BeautifulSoup, mes_solicitado: str):
     Em caso de dados ausentes, retorna 'n/d'.
     """
     print("Encontrando média e recorde mensal...")
-    quantidade_linhas = 28  # anos na tabela
+    quantidade_linhas = 29  # anos na tabela
     resultado_media = 'Média do mês - n/d'
     resultado_recorde = 'Recorde do mês - n/d'
 
@@ -77,8 +77,8 @@ def encontrar_media_e_recorde_mensal(soup: BeautifulSoup, mes_solicitado: str):
     if mes_idx is None:
         return resultado_media, resultado_recorde
 
-    # Média na linha 29 (índice 29 no HTML)
-    celulas_mensal = soup.findAll('td', {'class': f'data row29 col{mes_idx}'})
+    # Média na linha 30 (índice 29 no HTML)
+    celulas_mensal = soup.findAll('td', {'class': f'data row30 col{mes_idx}'})
     valores_mensal = [int(cel.text.strip()) for cel in celulas_mensal if cel.text.strip().isdigit()]
     if valores_mensal:
         media_mensal = sum(valores_mensal) / len(valores_mensal)
