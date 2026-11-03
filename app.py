@@ -66,13 +66,64 @@ def obter_dados_inpe():
     return dados
 
 
+def obter_media_oficial(bioma, mes_atual):
+    """
+    Tenta obter diretamente a média publicada na tabela HTML do INPE.
+    Não recalcula a média e não utiliza arredondamento.
+    """
+    url = (
+        'https://data.inpe.br/queimadas/estatisticas/'
+        f'?tipo=biomas&item={bioma}'
+    )
+
+    print(f"Buscando média oficial de {bioma}: {url}")
+
+    req = requests.get(url, timeout=20)
+    req.raise_for_status()
+
+    soup = BeautifulSoup(req.content, 'html.parser')
+
+    # Localiza a linha de média da tabela histórica.
+    linha_media = soup.select_one(
+        'table.dataframe tr.linha-media'
+    )
+
+    if linha_media is None:
+        raise ValueError(
+            f"Linha de média não encontrada no HTML de {bioma}. "
+            "A tabela pode ser carregada por JavaScript."
+        )
+
+    celulas = linha_media.find_all('td')
+
+    # Coluna 0 = Média*
+    # Colunas 1 a 12 = janeiro a dezembro
+    if len(celulas) <= mes_atual:
+        raise ValueError(
+            f"Coluna do mês {mes_atual} não encontrada para {bioma}."
+        )
+
+    valor = celulas[mes_atual].get_text(strip=True)
+
+    if not valor or valor == '-':
+        raise ValueError(
+            f"Média oficial indisponível para {bioma}, mês {mes_atual}."
+        )
+
+    media = int(valor.replace('.', ''))
+
+    print(f"Média oficial de {bioma}: {media}")
+
+    return media
+
+
 def extrair_dados_bioma(dados, bioma):
     """
     Extrai as informações de um bioma:
       - Focos no último dia disponível
       - Acumulado do mês atual
       - Total do mesmo mês do ano passado
-      - Média histórica mensal
+      - Média oficial da tabela do INPE
       - Recorde histórico mensal
     """
 
@@ -84,7 +135,6 @@ def extrair_dados_bioma(dados, bioma):
 
     nome_bioma = mapeamento_biomas[bioma]
 
-    # Identifica o bioma pelo nome, ignorando diferenças de caixa.
     def corresponde_bioma(registro):
         nome = (registro.get('bioma') or {}).get('nome_bioma')
 
@@ -122,7 +172,6 @@ def extrair_dados_bioma(dados, bioma):
         data = registro['data']
         valor = registro.get('quantidade_focos')
 
-        # Ignora dados ainda não disponíveis.
         if valor is None:
             continue
 
@@ -130,10 +179,8 @@ def extrair_dados_bioma(dados, bioma):
             diarios_por_data.get(data, 0) + valor
         )
 
-    # Utiliza a data limite informada pelo INPE.
     data_limite = dados['meta']['data_limite']
 
-    # Identifica os dias disponíveis do mês atual.
     datas_validas = [
         data for data in diarios_por_data
         if data.startswith(f"{ano_atual}-{mes_atual:02d}-")
@@ -174,27 +221,25 @@ def extrair_dados_bioma(dados, bioma):
     if total_mesmo_mes_ano_passado_bioma is None:
         total_mesmo_mes_ano_passado_bioma = 'n/d'
 
-    # --- MÉDIA E RECORDE HISTÓRICO ---
+    # --- MÉDIA OFICIAL DO INPE ---
 
-    # Exclui o ano corrente dos cálculos históricos.
+    media_mensal = obter_media_oficial(bioma, mes_atual)
+
+    resultado_media = (
+        f'Média do mês - {media_mensal} focos'
+    )
+
+    # --- RECORDE HISTÓRICO ---
+
     historicos = {
         ano: valor
         for ano, valor in totais_por_ano.items()
         if ano < ano_atual
     }
 
-    resultado_media = 'Média do mês - n/d'
     resultado_recorde = 'Recorde do mês - n/d'
 
     if historicos:
-        valores = list(historicos.values())
-
-        media_mensal = sum(valores) / len(valores)
-
-        resultado_media = (
-            f'Média do mês - {int(media_mensal)} focos'
-        )
-
         ano_recorde = max(
             historicos,
             key=historicos.get
@@ -304,7 +349,6 @@ Acumulado do mês atual - {acumulado_mes_atual_bioma} focos (vs {total_mesmo_mes
 def run():
     informacoes_biomas = []
 
-    # Obtém os dados de todos os biomas em uma única requisição.
     dados = obter_dados_inpe()
 
     for bioma in nomes_biomas:
